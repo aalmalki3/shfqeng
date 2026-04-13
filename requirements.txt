@@ -3,3 +3,5 @@ uvicorn
 requests
 pdfplumber
 pydantic
+jinja2
+xhtml2pdf
