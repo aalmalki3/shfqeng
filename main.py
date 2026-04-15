@@ -11,27 +11,33 @@ class FileRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "Shafaq Engine is Running"}
+    return {"message": "Shafaq Engine is Running Correctly"}
 
 @app.post("/extract-text")
 async def extract_pdf_text(request: FileRequest):
     try:
-        response = requests.get(request.file_url)
+        # جلب الملف
+        response = requests.get(request.file_url, timeout=10)
         response.raise_for_status()
         
         with pdfplumber.open(io.BytesIO(response.content)) as pdf:
             full_text = ""
             for page in pdf.pages:
-                page_text = page.extract_text()
+                # تحسين الاستخراج: نستخدم layout=True لضمان الحفاظ على ترتيب الكلمات
+                page_text = page.extract_text(layout=True, x_tolerance=2, y_tolerance=2)
                 if page_text:
                     full_text += page_text + "\n"
         
-        if not full_text.strip():
-            raise HTTPException(status_code=400, detail="الملف فارغ")
+        # تنظيف النص المستخرج من الرموز الغريبة التي تسبب الهلوسة
+        cleaned_text = full_text.strip()
+        
+        if not cleaned_text:
+            raise HTTPException(status_code=400, detail="فشل في استخراج نص مفهوم من الملف")
             
         return {
             "status": "success",
-            "extracted_text": full_text[:10000] # زدنا المساحة لتستوعب تقارير أطول
+            "extracted_text": cleaned_text[:15000] # زدنا الحجم لضمان شمولية السيرة الذاتية
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # إذا كان الخطأ متعلقاً بالترميز، سنعرف هنا
+        raise HTTPException(status_code=500, detail=f"Error in Shafaq Engine: {str(e)}")
